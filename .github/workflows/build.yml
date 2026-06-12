@@ -19,15 +19,15 @@ jobs:
         sudo apt-get install -y cmake gcc-arm-none-eabi \
           libnewlib-arm-none-eabi build-essential git python3
 
-    - name: Clone Pico SDK 2.1.0 (sem tinyusb)
+    - name: Clone Pico SDK master
       run: |
-        git clone --branch 2.1.0 --depth 1 \
+        git clone --depth 1 \
           https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --depth 1 \
           lib/btstack lib/cyw43-driver lib/lwip lib/mbedtls
 
-    - name: Clone TinyUSB master separado
+    - name: Clone TinyUSB master
       run: |
         git clone --depth 1 \
           https://github.com/hathach/tinyusb.git pico-sdk/lib/tinyusb
