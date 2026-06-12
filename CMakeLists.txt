@@ -18,8 +18,18 @@ target_include_directories(rp2350_mouse_host PRIVATE
     src
 )
 
+# Definições necessárias para o USB host PIO no pico2/rp2350
+target_compile_definitions(rp2350_mouse_host PRIVATE
+    PICO_DEFAULT_PIO_USB_DP_PIN=20
+    PICO_DEFAULT_PIO_USB_VBUSEN_PIN=22
+    PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
+    BOARD_TUH_RHPORT=1
+    BOARD_TUD_RHPORT=0
+)
+
 target_link_libraries(rp2350_mouse_host
     pico_stdlib
+    pico_multicore
     tinyusb_host
     tinyusb_board
 )
