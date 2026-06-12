@@ -1,43 +1,27 @@
 cmake_minimum_required(VERSION 3.17)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/hw/bsp/family_support.cmake)
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-# gets PROJECT name for the example (e.g. <BOARD>-<DIR_NAME>)
-family_get_project_name(PROJECT ${CMAKE_CURRENT_LIST_DIR})
+project(rp2350_mouse_host C CXX ASM)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
-project(${PROJECT} C CXX ASM)
+pico_sdk_init()
 
-# Checks this example is valid for the family and initializes the project
-family_initialize_project(${PROJECT} ${CMAKE_CURRENT_LIST_DIR})
+add_executable(rp2350_mouse_host
+    src/main.c
+    src/usb_descriptors.c
+    src/hid_reports.c
+)
 
-add_executable(${PROJECT})
+target_include_directories(rp2350_mouse_host PRIVATE
+    src
+)
 
-# Example source
-target_sources(${PROJECT} PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/hid_reports.c
-  )
+target_link_libraries(rp2350_mouse_host
+    pico_stdlib
+    tinyusb_host
+    tinyusb_board
+)
 
-# Example include
-target_include_directories(${PROJECT} PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
-  )
-
-# Configure compilation flags and libraries for the example without RTOS.
-# See the corresponding function in hw/bsp/FAMILY/family.cmake for details.
-family_configure_dual_usb_example(${PROJECT} noos)
-
-# due to warnings from Pico-PIO-USB
-if (FAMILY STREQUAL rp2040)
-  target_compile_options(${PROJECT} PUBLIC
-    -Wno-error=shadow
-    -Wno-error=cast-align
-    -Wno-error=cast-qual
-    -Wno-error=redundant-decls
-    -Wno-error=sign-conversion
-    -Wno-error=conversion
-    -Wno-error=sign-compare
-    -Wno-error=unused-function
-    )
-endif ()
+pico_add_extra_outputs(rp2350_mouse_host)
