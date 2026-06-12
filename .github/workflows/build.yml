@@ -25,6 +25,10 @@ jobs:
           https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --depth 1 lib/tinyusb
+        # Atualiza o TinyUSB interno para versão compatível com main.c
+        cd lib/tinyusb
+        git fetch --depth 1 origin 0ee9b8e45e6e4d8543fcdb3927b16d52ae8e2888
+        git checkout 0ee9b8e45e6e4d8543fcdb3927b16d52ae8e2888
 
     - name: Build firmware
       run: |
