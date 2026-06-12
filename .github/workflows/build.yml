@@ -25,6 +25,11 @@ jobs:
         cd pico-sdk
         git submodule update --init
 
+    - name: Clone TinyUSB
+      run: |
+        git clone --depth 1 \
+          https://github.com/hathach/tinyusb.git tinyusb
+
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$PWD/pico-sdk
