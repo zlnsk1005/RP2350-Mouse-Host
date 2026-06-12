@@ -765,27 +765,28 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     int8_t y = 0;
     int8_t wheel = 0;
 
-    // ========== NOVO PARSER (Ninjutsu Sora 8 bytes) ==========
+    // ========== Parser Universal (Ninjutso + Logitech + Padrão) ==========
     if (len >= 8)
     {
-        // Botões no byte 0, bits 0..4
+        // 8 bytes: Ninjutso Sora V1
         buttons = report[0] & 0x1F;
-
-        // X e Y são 16 bits little-endian (bytes 2-3, 4-5)
         int16_t x16 = (int16_t)(report[2] | (report[3] << 8));
         int16_t y16 = (int16_t)(report[4] | (report[5] << 8));
-
-        // Wheel no byte 6 (8 bits signed)
         wheel = (int8_t)report[6];
-
-        // Converte 16 bits -> 8 bits com clamp simples
         x = (int8_t)(x16 > 127 ? 127 : (x16 < -128 ? -128 : x16));
         y = (int8_t)(y16 > 127 ? 127 : (y16 < -128 ? -128 : y16));
-
-        CDC_LOG("  Parsed Sora: btn=0x%02X x=%d y=%d wheel=%d\n", buttons, x, y, wheel);
     }
-    else if (len >= 4) // fallback para ratos mais simples
+    else if (len == 5)
     {
+        // 5 bytes: Logitech (M90 / C05A)
+        buttons = report[0];
+        x = (int8_t)report[2]; // Salta o byte 1 (padding)
+        y = (int8_t)report[3];
+        wheel = (int8_t)report[4];
+    }
+    else if (len == 4)
+    {
+        // 4 bytes: Rato Boot Protocol padrão
         buttons = report[0];
         x = (int8_t)report[1];
         y = (int8_t)report[2];
@@ -798,7 +799,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
         return;
     }
 
-    // ========== 4. 将报告加入队列 ==========
+    // ========== Coloca o relatório na fila ==========
     mouse_report_t rpt = {
         .buttons = buttons,
         .x = x,
@@ -812,7 +813,6 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     else
     {
       CDC_LOG("Mouse report queued: buttons=%d x=%d y=%d wheel=%d\n", rpt.buttons, rpt.x, rpt.y, rpt.wheel);
-      // 更新鼠标最后状态last_rpt
       last_rpt = rpt;
     }
   }
@@ -821,7 +821,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     CDC_LOG("  Device: Unknown HID Type (proto=%u)\r\n", proto);
   }
 
-  // 继续请求报告
+  // Continua a pedir relatórios
   if (!tuh_hid_receive_report(dev_addr, instance))
   {
     CDC_LOG("Error: cannot request report\r\n");
