@@ -36,8 +36,8 @@ jobs:
       run: |
         export PICO_SDK_PATH=$PWD/pico-sdk
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=rp2350-usb-a \
-                 -DPICO_PLATFORM=rp2350
+        cmake .. -DPICO_BOARD=pico2 \
+                 -DPICO_PLATFORM=rp2350-arm-s
         make -j4
 
     - name: Upload .uf2
