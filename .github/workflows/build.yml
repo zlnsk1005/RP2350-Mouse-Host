@@ -32,9 +32,16 @@ jobs:
         git clone --depth 1 \
           https://github.com/hathach/tinyusb.git pico-sdk/lib/tinyusb
 
+    - name: Clone Pico-PIO-USB
+      run: |
+        git clone --depth 1 \
+          https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+        cp -r Pico-PIO-USB/src/* pico-sdk/lib/tinyusb/hw/bsp/rp2040/
+
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$PWD/pico-sdk
+        export PICO_PIO_USB_PATH=$PWD/Pico-PIO-USB
         mkdir build && cd build
         cmake .. -DPICO_BOARD=pico2 \
                  -DPICO_PLATFORM=rp2350-arm-s
