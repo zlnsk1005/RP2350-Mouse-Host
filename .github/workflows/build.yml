@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@v4
@@ -23,19 +24,14 @@ jobs:
         git clone --branch 2.1.0 --depth 1 \
           https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
-        git submodule update --init --depth 1
-
-    - name: Clone TinyUSB compatível
-      run: |
-        git clone --branch 0.17.0 --depth 1 \
-          https://github.com/hathach/tinyusb.git tinyusb
+        git submodule update --init --depth 1 lib/tinyusb
 
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$PWD/pico-sdk
         mkdir build && cd build
-        cmake .. -DBOARD=rp2350-usb-a -DFAMILY=rp2040 \
-          -DPICO_SDK_PATH=$PICO_SDK_PATH
+        cmake .. -DPICO_BOARD=rp2350-usb-a \
+                 -DPICO_PLATFORM=rp2350
         make -j4
 
     - name: Upload .uf2
