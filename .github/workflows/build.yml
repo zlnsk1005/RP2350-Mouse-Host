@@ -1,54 +1,44 @@
 name: Build RP2350 Firmware
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake gcc-arm-none-eabi \
-          libnewlib-arm-none-eabi build-essential git python3
-
-    - name: Clone Pico SDK master
+        sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
+        
+    - name: Clone Pico SDK & PIO-USB
       run: |
-        git clone --depth 1 \
-          https://github.com/raspberrypi/pico-sdk.git
+        git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
-        git submodule update --init --depth 1 \
-          lib/btstack lib/cyw43-driver lib/lwip lib/mbedtls
-
-    - name: Clone TinyUSB master
+        git submodule update --init --depth 1 lib/tinyusb
+        cd ..
+        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+        
+    - name: Fix board_millis
       run: |
-        git clone --depth 1 \
-          https://github.com/hathach/tinyusb.git pico-sdk/lib/tinyusb
-
-    - name: Clone Pico-PIO-USB
-      run: |
-        git clone --depth 1 \
-          https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
-        cp -r Pico-PIO-USB/src/* pico-sdk/lib/tinyusb/hw/bsp/rp2040/
-
+        echo "" >> src/main.c
+        echo "#include \"pico/time.h\"" >> src/main.c
+        echo "__attribute__((weak)) uint32_t board_millis(void) { return to_ms_since_boot(get_absolute_time()); }" >> src/main.c
+        
     - name: Build firmware
       run: |
-        export PICO_SDK_PATH=$PWD/pico-sdk
-        export PICO_PIO_USB_PATH=$PWD/Pico-PIO-USB
+        export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
+        export PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=pico2 \
-                 -DPICO_PLATFORM=rp2350-arm-s
-        make -j4
-
+        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPIO_USB_PATH=$PIO_USB_PATH
+        make -j$(nproc)
+        
     - name: Upload .uf2
       uses: actions/upload-artifact@v4
       with:
         name: firmware-rp2350
-        path: build/**/*.uf2
+        path: build/*.uf2
