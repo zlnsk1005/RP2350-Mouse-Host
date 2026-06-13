@@ -23,33 +23,15 @@ jobs:
         cd ..
         git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
         
-    - name: Fix Configs (Bypass RP2040 e Debug)
+    - name: Fix Configs (Bypass RP2040)
       run: |
         sed -i 's/#if CFG_TUSB_MCU == OPT_MCU_RP2040/#if 1/g' src/tusb_config.h
         sed -i 's/#define USE_CDC 0/#define USE_CDC 1/g' src/tusb_config.h
         
-    - name: Inject Dummy Function
-      run: |
-        # Cria a função fantasma para o linker não falhar!
-        echo "" >> src/main.c
-        echo "__attribute__((weak)) void hcd_device_close(uint8_t rhport, uint8_t dev_addr) { (void) rhport; (void) dev_addr; }" >> src/main.c
-
     - name: Setup CMakeLists
       run: |
         cat > CMakeLists.txt << 'EOF'
         cmake_minimum_required(VERSION 3.17)
-        
-        # 1. Força TODOS os ficheiros a verem a pasta do pio_usb.h
-        include_directories($ENV{PICO_PIO_USB_PATH}/src)
-        
-        # 2. Ativa o PIO USB Host no motor do SDK
-        set(PICO_TINYUSB_PIO_USB_HOST 1)
-        
-        add_compile_definitions(
-            CFG_TUH_RPI_PIO_USB=1
-            PICO_DEFAULT_PIO_USB_DP_PIN=16
-            PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
-        )
         
         include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
         project(rp2350_mouse_host C CXX ASM)
@@ -58,17 +40,32 @@ jobs:
         
         pico_sdk_init()
         
-        add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
-        target_include_directories(rp2350_mouse_host PRIVATE src)
+        # 1. Adiciona a biblioteca Pico-PIO-USB ao processo
+        add_subdirectory($ENV{PICO_PIO_USB_PATH} pio_usb)
         
+        add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
+        
+        # 2. Garante que as peças de código do USB encontram a pasta do PIO
+        target_include_directories(rp2350_mouse_host PRIVATE src $ENV{PICO_PIO_USB_PATH}/src)
+        
+        target_compile_definitions(rp2350_mouse_host PRIVATE
+            CFG_TUH_RPI_PIO_USB=1
+            PICO_DEFAULT_PIO_USB_DP_PIN=16
+            PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
+        )
+        
+        # 3. O SEGREDO FINAL: Ligar o hardware_pio e hardware_dma para anular os erros!
         target_link_libraries(rp2350_mouse_host PRIVATE
             pico_stdlib
             pico_multicore
+            hardware_pio
+            hardware_dma
             tinyusb_device
             tinyusb_host
             tinyusb_board
             pico_pio_usb
         )
+        
         pico_add_extra_outputs(rp2350_mouse_host)
         EOF
         
