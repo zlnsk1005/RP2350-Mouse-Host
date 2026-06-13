@@ -20,15 +20,13 @@ jobs:
         git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --depth 1 lib/tinyusb
-        cd ..
-        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git lib/pio_usb
         
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
-        export PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPICO_PIO_USB_PATH=$PICO_PIO_USB_PATH
+        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s
         make -j$(nproc)
         
     - name: Upload .uf2
