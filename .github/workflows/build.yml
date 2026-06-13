@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     
@@ -23,44 +23,34 @@ jobs:
         cd ..
         git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
         
-    - name: Fix Configs (Bypass RP2040 e Failsafe)
-      run: |
-        # Força o USB no RP2350 e liga o modo de Depuração (CDC)
-        sed -i 's/#if CFG_TUSB_MCU == OPT_MCU_RP2040/#if 1/g' src/tusb_config.h
-        sed -i 's/#define USE_CDC 0/#define USE_CDC 1/g' src/tusb_config.h
-        
-        # Injeta uma função fantasma no código para enganar o bug do TinyUSB
-        echo "" >> src/main.c
-        echo "// Failsafe para bug do TinyUSB" >> src/main.c
-        echo "__attribute__((weak)) void hcd_device_close(uint8_t rhport, uint8_t dev_addr) { (void)rhport; (void)dev_addr; }" >> src/main.c
-        
     - name: Setup CMakeLists
       run: |
         cat > CMakeLists.txt << 'EOF'
         cmake_minimum_required(VERSION 3.17)
         
-        # 1. Diz ao SDK onde está o PIO-USB ANTES de ele arrancar
-        set(PICO_PIO_USB_PATH $ENV{PICO_PIO_USB_PATH})
+        include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+        project(rp2350_mouse_host C CXX ASM)
         
-        # 2. Força a visibilidade da biblioteca globalmente
-        include_directories($ENV{PICO_PIO_USB_PATH}/src)
-        
-        # 3. Força as regras de pinos
+        # Regras globais para o RP2350
         add_compile_definitions(
             CFG_TUH_RPI_PIO_USB=1
             PICO_DEFAULT_PIO_USB_DP_PIN=16
             PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
         )
         
-        include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
-        project(rp2350_mouse_host C CXX ASM)
-        set(CMAKE_C_STANDARD 11)
-        set(CMAKE_CXX_STANDARD 17)
-        
         pico_sdk_init()
         
+        # Adiciona a biblioteca de forma correta
+        add_subdirectory($ENV{PICO_PIO_USB_PATH} pio_usb)
+        
         add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
-        target_include_directories(rp2350_mouse_host PRIVATE src)
+        
+        # Adiciona TODOS os includes necessários recursivamente
+        target_include_directories(rp2350_mouse_host PRIVATE 
+            src 
+            $ENV{PICO_PIO_USB_PATH}/src
+            ${PICO_SDK_PATH}/src/rp2_common/hardware_pio/include
+        )
         
         target_link_libraries(rp2350_mouse_host PRIVATE
             pico_stdlib
