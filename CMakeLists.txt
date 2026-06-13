@@ -13,10 +13,11 @@ add_executable(rp2350_mouse_host
 
 target_include_directories(rp2350_mouse_host PRIVATE src)
 
-# Força o USB Host via PIO para o RP2350 e usa os pinos corretos (DP=16, DM=17)
+# Força o USB Host via PIO para o RP2350 e usa os pinos corretos
 target_compile_definitions(rp2350_mouse_host PRIVATE
     CFG_TUH_RPI_PIO_USB=1
     PICO_DEFAULT_PIO_USB_DP_PIN=16
+    PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
 )
 
 # Adiciona a biblioteca pico_pio_usb que faltava para compilar os hcd_*
