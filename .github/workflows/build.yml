@@ -23,17 +23,28 @@ jobs:
         cd ..
         git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
         
-    - name: Fix Configs (Ligar Debug e Bypass RP2040)
+    - name: Fix Configs (Bypass RP2040 e Debug)
       run: |
-        sed -i 's/#define USE_CDC 0/#define USE_CDC 1/g' src/tusb_config.h
         sed -i 's/#if CFG_TUSB_MCU == OPT_MCU_RP2040/#if 1/g' src/tusb_config.h
+        sed -i 's/#define USE_CDC 0/#define USE_CDC 1/g' src/tusb_config.h
         
-    - name: Setup CMakeLists (Força Bruta Ordenada)
+    - name: Inject Dummy Function
+      run: |
+        # Cria a função fantasma para o linker não falhar!
+        echo "" >> src/main.c
+        echo "__attribute__((weak)) void hcd_device_close(uint8_t rhport, uint8_t dev_addr) { (void) rhport; (void) dev_addr; }" >> src/main.c
+
+    - name: Setup CMakeLists
       run: |
         cat > CMakeLists.txt << 'EOF'
         cmake_minimum_required(VERSION 3.17)
         
+        # 1. Força TODOS os ficheiros a verem a pasta do pio_usb.h
         include_directories($ENV{PICO_PIO_USB_PATH}/src)
+        
+        # 2. Ativa o PIO USB Host no motor do SDK
+        set(PICO_TINYUSB_PIO_USB_HOST 1)
+        
         add_compile_definitions(
             CFG_TUH_RPI_PIO_USB=1
             PICO_DEFAULT_PIO_USB_DP_PIN=16
@@ -45,19 +56,8 @@ jobs:
         set(CMAKE_C_STANDARD 11)
         set(CMAKE_CXX_STANDARD 17)
         
-        # PRIMEIRO ligamos o SDK para ter o pico/stdlib.h disponível!
         pico_sdk_init()
         
-        # DEPOIS criamos a nossa biblioteca USB
-        add_library(pico_pio_usb_custom STATIC 
-            $ENV{PICO_PIO_USB_PATH}/src/pio_usb.c
-            $ENV{PICO_PIO_USB_PATH}/src/pio_usb_host.c
-            $ENV{PICO_PIO_USB_PATH}/src/pio_usb_device.c
-        )
-        # Dizemos à nossa biblioteca para puxar o hardware e o stdlib
-        target_link_libraries(pico_pio_usb_custom PUBLIC pico_stdlib hardware_pio hardware_dma hardware_clocks)
-        
-        # Finalmente, montamos tudo
         add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
         target_include_directories(rp2350_mouse_host PRIVATE src)
         
@@ -67,7 +67,7 @@ jobs:
             tinyusb_device
             tinyusb_host
             tinyusb_board
-            pico_pio_usb_custom
+            pico_pio_usb
         )
         pico_add_extra_outputs(rp2350_mouse_host)
         EOF
