@@ -15,18 +15,23 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
         
-    - name: Clone Pico SDK & PIO-USB
+    - name: Clone SDK & PIO-USB
       run: |
         git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
         git submodule update --init --depth 1 lib/tinyusb
-        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git lib/pio_usb
+        cd ..
+        
+        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+        # A cartada final: forçar os ficheiros para dentro da pasta do TinyUSB
+        cp -r Pico-PIO-USB/src/* pico-sdk/lib/tinyusb/hw/bsp/rp2040/
         
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
+        export PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s
+        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPICO_PIO_USB_PATH=$PICO_PIO_USB_PATH
         make -j$(nproc)
         
     - name: Upload .uf2
