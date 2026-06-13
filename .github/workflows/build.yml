@@ -28,23 +28,33 @@ jobs:
         sed -i 's/#define USE_CDC 0/#define USE_CDC 1/g' src/tusb_config.h
         sed -i 's/#if CFG_TUSB_MCU == OPT_MCU_RP2040/#if 1/g' src/tusb_config.h
         
-    - name: Setup CMakeLists
+    - name: Setup CMakeLists (Força Bruta Absoluta)
       run: |
         cat > CMakeLists.txt << 'EOF'
         cmake_minimum_required(VERSION 3.17)
         
-        # A VARIÁVEL MÁGICA OFICIAL DO PICO SDK!
-        set(PICO_TINYUSB_PIO_USB_HOST 1)
-        
-        # Pinos oficiais da RP2350-USB-A
+        # 1. REGRAS GLOBAIS: Força o SDK a ver a pasta do USB ANTES de arrancar
+        include_directories($ENV{PICO_PIO_USB_PATH}/src)
         add_compile_definitions(
+            CFG_TUH_RPI_PIO_USB=1
             PICO_DEFAULT_PIO_USB_DP_PIN=16
             PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
         )
         
         include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
         project(rp2350_mouse_host C CXX ASM)
+        set(CMAKE_C_STANDARD 11)
+        set(CMAKE_CXX_STANDARD 17)
+        
         pico_sdk_init()
+        
+        # 2. CRIAMOS A NOSSA PRÓPRIA BIBLIOTECA (Acabaram-se os erros de "not found")
+        add_library(pico_pio_usb STATIC 
+            $ENV{PICO_PIO_USB_PATH}/src/pio_usb.c
+            $ENV{PICO_PIO_USB_PATH}/src/pio_usb_host.c
+            $ENV{PICO_PIO_USB_PATH}/src/pio_usb_device.c
+        )
+        target_link_libraries(pico_pio_usb PUBLIC hardware_pio hardware_dma hardware_clocks)
         
         add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
         target_include_directories(rp2350_mouse_host PRIVATE src)
@@ -55,6 +65,7 @@ jobs:
             tinyusb_device
             tinyusb_host
             tinyusb_board
+            pico_pio_usb
         )
         pico_add_extra_outputs(rp2350_mouse_host)
         EOF
@@ -62,8 +73,9 @@ jobs:
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
+        export PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
+        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s
         make -j$(nproc)
         
     - name: Upload .uf2
