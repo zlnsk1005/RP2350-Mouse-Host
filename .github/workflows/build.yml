@@ -15,17 +15,20 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
         
-    - name: Clone Pico SDK & Submodules
+    - name: Clone Pico SDK & PIO-USB
       run: |
         git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
-        git submodule update --init --depth 1 lib/tinyusb lib/Pico-PIO-USB
+        git submodule update --init --depth 1 lib/tinyusb
+        cd ..
+        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
         
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
+        export PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s
+        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPIO_USB_PATH=$PIO_USB_PATH
         make -j$(nproc)
         
     - name: Upload .uf2
