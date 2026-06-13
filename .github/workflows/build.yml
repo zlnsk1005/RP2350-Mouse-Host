@@ -23,6 +23,11 @@ jobs:
         cd ..
         git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
         
+    - name: Fix tusb_config.h (O Fim da Auto-Sabotagem)
+      run: |
+        # Destrói a limitação do RP2040 e força o PIO USB a ligar-se no RP2350!
+        sed -i 's/#if CFG_TUSB_MCU == OPT_MCU_RP2040/#if 1/g' src/tusb_config.h
+        
     - name: Setup CMakeLists
       run: |
         cat > CMakeLists.txt << 'EOF'
@@ -34,19 +39,19 @@ jobs:
         
         pico_sdk_init()
         
-        # AQUI ESTÁ A CORREÇÃO: Dizer ao CMake onde está a biblioteca
+        # Junta a biblioteca oficial do PIO USB
         add_subdirectory($ENV{PICO_PIO_USB_PATH} pio_usb)
         
         add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
         target_include_directories(rp2350_mouse_host PRIVATE src)
         
         target_compile_definitions(rp2350_mouse_host PRIVATE
-            CFG_TUH_RPI_PIO_USB=1
             PICO_DEFAULT_PIO_USB_DP_PIN=16
             PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
         )
         
-        target_link_libraries(rp2350_mouse_host
+        # A palavra PRIVATE impede o erro do INTERFACE de vez!
+        target_link_libraries(rp2350_mouse_host PRIVATE
             pico_stdlib
             pico_multicore
             tinyusb_device
