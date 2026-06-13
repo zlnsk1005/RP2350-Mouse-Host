@@ -27,32 +27,24 @@ jobs:
       run: |
         cat > CMakeLists.txt << 'EOF'
         cmake_minimum_required(VERSION 3.17)
+        
+        # 1. Dá o caminho e as regras ANTES de o projeto arrancar
+        include_directories($ENV{PICO_PIO_USB_PATH}/src)
+        add_compile_definitions(
+            CFG_TUH_RPI_PIO_USB=1
+            PICO_DEFAULT_PIO_USB_DP_PIN=16
+            PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
+        )
+        
+        # 2. Agora sim, importa o SDK
         include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
         project(rp2350_mouse_host C CXX ASM)
         set(CMAKE_C_STANDARD 11)
         set(CMAKE_CXX_STANDARD 17)
-        
         pico_sdk_init()
         
         add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
         target_include_directories(rp2350_mouse_host PRIVATE src)
-        
-        # O segredo absoluto: Injetar as dependências e permissões diretamente na biblioteca do TinyUSB
-        target_link_libraries(tinyusb_board PUBLIC pico_pio_usb hardware_pio hardware_dma)
-        target_link_libraries(tinyusb_host PUBLIC pico_pio_usb hardware_pio hardware_dma)
-        
-        # Forçar o TinyUSB a reconhecer o PIO USB ignorando a limitação do RP2040
-        target_compile_definitions(tinyusb_board PUBLIC
-            CFG_TUH_RPI_PIO_USB=1
-            PICO_DEFAULT_PIO_USB_DP_PIN=16
-            PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
-        )
-        
-        target_compile_definitions(rp2350_mouse_host PRIVATE
-            CFG_TUH_RPI_PIO_USB=1
-            PICO_DEFAULT_PIO_USB_DP_PIN=16
-            PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
-        )
         
         target_link_libraries(rp2350_mouse_host
             pico_stdlib
