@@ -26,9 +26,9 @@ jobs:
     - name: Build firmware
       run: |
         export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
-        export PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
+        export PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
         mkdir build && cd build
-        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPIO_USB_PATH=$PIO_USB_PATH
+        cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s -DPICO_PIO_USB_PATH=$PICO_PIO_USB_PATH
         make -j$(nproc)
         
     - name: Upload .uf2
