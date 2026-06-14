@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.17)
+
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
 project(rp2350_mouse_host C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+
 pico_sdk_init()
+
+add_subdirectory($ENV{PICO_PIO_USB_PATH} pio_usb)
 
 add_executable(rp2350_mouse_host
     src/main.c
@@ -11,23 +16,28 @@ add_executable(rp2350_mouse_host
     src/hid_reports.c
 )
 
-target_include_directories(rp2350_mouse_host PRIVATE src)
+target_include_directories(rp2350_mouse_host PRIVATE
+    src
+)
 
-# Força o USB Host via PIO para o RP2350 e usa os pinos corretos
 target_compile_definitions(rp2350_mouse_host PRIVATE
+    CFG_TUSB_RHPORT0_MODE=OPT_MODE_DEVICE
+    CFG_TUSB_RHPORT1_MODE=(OPT_MODE_HOST|OPT_MODE_FULL_SPEED)
     CFG_TUH_RPI_PIO_USB=1
     PICO_DEFAULT_PIO_USB_DP_PIN=16
+    PICO_DEFAULT_PIO_USB_VBUSEN_PIN=18
     PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
 )
 
-# Adiciona a biblioteca pico_pio_usb que faltava para compilar os hcd_*
-target_link_libraries(rp2350_mouse_host
+target_link_libraries(rp2350_mouse_host PRIVATE
     pico_stdlib
     pico_multicore
-    tinyusb_device
     tinyusb_host
+    tinyusb_device
     tinyusb_board
     pico_pio_usb
+    hardware_pio
+    hardware_dma
 )
 
 pico_add_extra_outputs(rp2350_mouse_host)
