@@ -14,6 +14,7 @@ add_executable(rp2350_mouse_host
     src/main.c
     src/usb_descriptors.c
     src/hid_reports.c
+    ${PICO_SDK_PATH}/lib/tinyusb/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c
 )
 
 target_include_directories(rp2350_mouse_host PRIVATE
@@ -27,6 +28,7 @@ target_compile_definitions(rp2350_mouse_host PRIVATE
     PICO_DEFAULT_PIO_USB_DP_PIN=16
     PICO_DEFAULT_PIO_USB_VBUSEN_PIN=18
     PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
+    BOARD_TUH_RHPORT=1
 )
 
 target_link_libraries(rp2350_mouse_host PRIVATE
