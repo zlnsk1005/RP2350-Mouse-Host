@@ -15,7 +15,11 @@
 #include "pico/multicore.h"
 #include "pico/mutex.h"
 #include "pico/util/queue.h" // 添加队列支持
+#include "pico/time.h"
 
+uint32_t board_millis(void) {
+    return to_ms_since_boot(get_absolute_time());
+}
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
 //--------------------------------------------------------------------+
