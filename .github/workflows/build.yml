@@ -1,78 +1,49 @@
 name: Build RP2350 Firmware
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
-        
-    - name: Clone SDK & PIO-USB
+        sudo apt-get install -y cmake gcc-arm-none-eabi \
+          libnewlib-arm-none-eabi build-essential git python3
+
+    - name: Clone Pico SDK
       run: |
         git clone --depth 1 https://github.com/raspberrypi/pico-sdk.git
         cd pico-sdk
-        git submodule update --init --depth 1 lib/tinyusb
-        cd ..
-        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
-        
-    - name: Setup CMakeLists
+        git submodule update --init --depth 1 \
+          lib/btstack lib/cyw43-driver lib/lwip lib/mbedtls
+
+    - name: Clone TinyUSB master
       run: |
-        cat > CMakeLists.txt << 'EOF'
-        cmake_minimum_required(VERSION 3.17)
-        
-        include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
-        project(rp2350_mouse_host C CXX ASM)
-        
-        # Regras globais para o RP2350
-        add_compile_definitions(
-            CFG_TUH_RPI_PIO_USB=1
-            PICO_DEFAULT_PIO_USB_DP_PIN=16
-            PICO_DEFAULT_PIO_USB_VBUSEN_STATE=1
-        )
-        
-        pico_sdk_init()
-        
-        # Adiciona a biblioteca de forma correta
-        add_subdirectory($ENV{PICO_PIO_USB_PATH} pio_usb)
-        
-        add_executable(rp2350_mouse_host src/main.c src/usb_descriptors.c src/hid_reports.c)
-        
-        # Adiciona TODOS os includes necessários recursivamente
-        target_include_directories(rp2350_mouse_host PRIVATE 
-            src 
-            $ENV{PICO_PIO_USB_PATH}/src
-            ${PICO_SDK_PATH}/src/rp2_common/hardware_pio/include
-        )
-        
-        target_link_libraries(rp2350_mouse_host PRIVATE
-            pico_stdlib
-            pico_multicore
-            tinyusb_device
-            tinyusb_host
-            tinyusb_board
-            pico_pio_usb
-        )
-        pico_add_extra_outputs(rp2350_mouse_host)
-        EOF
-        
+        git clone --depth 1 https://github.com/hathach/tinyusb.git pico-sdk/lib/tinyusb
+
+    - name: Clone Pico-PIO-USB
+      run: |
+        git clone --depth 1 https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+
     - name: Build firmware
       run: |
-        export PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk
-        export PICO_PIO_USB_PATH=$GITHUB_WORKSPACE/Pico-PIO-USB
+        export PICO_SDK_PATH=$PWD/pico-sdk
+        export PICO_PIO_USB_PATH=$PWD/Pico-PIO-USB
         mkdir build && cd build
         cmake .. -DPICO_BOARD=pico2 -DPICO_PLATFORM=rp2350-arm-s
-        make -j$(nproc)
-        
+        make -j4
+
     - name: Upload .uf2
       uses: actions/upload-artifact@v4
       with:
         name: firmware-rp2350
-        path: build/*.uf2
+        path: build/**/*.uf2
